@@ -5,6 +5,20 @@ const SUPABASE_KEY = "sb_publishable_jCR-jZAEWg3d1rNRcOiV3A_23F-knpG";
 const menuToggle = document.getElementById("menuToggle");
 const navMenu = document.getElementById("navMenu");
 
+// Private admin dashboard shortcut in the main navigation.
+if (navMenu && !navMenu.querySelector('.admin-login-link')) {
+  const adminLink = document.createElement('a');
+  adminLink.href = 'admin.html';
+  adminLink.className = 'admin-login-link';
+  adminLink.setAttribute('aria-label', 'Admin Login');
+  adminLink.innerHTML = '<span aria-hidden="true">🔒</span> Admin Login';
+  navMenu.appendChild(adminLink);
+
+  const adminStyle = document.createElement('style');
+  adminStyle.textContent = `.admin-login-link{display:inline-flex;align-items:center;gap:7px;padding:10px 14px;border:1px solid #d7e2ef;border-radius:10px;color:#17304f!important;background:#fff;font-weight:700;font-size:13px;white-space:nowrap;transition:.2s ease}.admin-login-link:hover{border-color:#2f80ed;background:#f2f7ff;color:#1769d2!important;transform:translateY(-1px)}@media(max-width:900px){.admin-login-link{width:100%;justify-content:center;margin-top:4px}}`;
+  document.head.appendChild(adminStyle);
+}
+
 menuToggle?.addEventListener("click", () => {
   const open = navMenu.classList.toggle("open");
   menuToggle.setAttribute("aria-expanded", String(open));
