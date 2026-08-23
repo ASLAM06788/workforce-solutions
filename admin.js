@@ -1,199 +1,61 @@
-const API = "https://yvuljyujtrycwoxhnzyi.supabase.co/functions/v1/workforce-admin-api";
-const TOKEN_KEY = "workforce_admin_token";
-const ADMIN_KEY = "workforce_admin_id";
+const API="https://yvuljyujtrycwoxhnzyi.supabase.co/functions/v1/workforce-admin-api";
+const TOKEN_KEY="workforce_admin_token";
+const ADMIN_KEY="workforce_admin_id";
+const $=id=>document.getElementById(id);
+const state={candidates:[],requirements:[],jobs:[],applications:[],clients:[]};
+const candidateStatuses=["new","screening","shortlisted","interview","selected","joined","rejected","hold"];
+const requirementStatuses=["new","contacted","sourcing","shortlisted","fulfilled","closed","hold"];
+const applicationStages=["assigned","screening","shortlisted","interview","selected","offered","joined","rejected","hold"];
+const clientStatuses=["active","prospect","inactive","hold"];
+function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
+function opts(list,current){return list.map(x=>`<option value="${x}" ${x===current?"selected":""}>${x.replaceAll("_"," ")}</option>`).join("")}
+function when(v){if(!v)return "—";try{return new Date(v).toLocaleString()}catch{return v}}
+async function api(action,payload={},auth=true){const headers={"Content-Type":"application/json"};if(auth){const t=sessionStorage.getItem(TOKEN_KEY);if(t)headers.Authorization=`Bearer ${t}`;}const res=await fetch(API,{method:"POST",headers,body:JSON.stringify({action,...payload})});const data=await res.json().catch(()=>({}));if(!res.ok){if(res.status===401&&auth)signOut(false);throw new Error(data.error||"Request failed")}return data}
+function busy(btn,on,text="Please wait..."){if(!btn)return;if(on){btn.dataset.original=btn.textContent;btn.textContent=text;btn.disabled=true}else{btn.textContent=btn.dataset.original||btn.textContent;btn.disabled=false}}
+function showSetup(){$("loginCard").classList.add("hidden");$("setupCard").classList.remove("hidden");$("setupError").textContent=""}
+function showLogin(){$("setupCard").classList.add("hidden");$("loginCard").classList.remove("hidden");$("loginError").textContent=""}
+$("showSetup").addEventListener("click",showSetup);$("showLogin").addEventListener("click",showLogin);
+$("setupForm").addEventListener("submit",async e=>{e.preventDefault();const b=e.currentTarget.querySelector("button[type=submit]"),id=$("setupId").value.trim().toUpperCase(),password=$("setupPassword").value;if(!["ASLAM","ADMIN"].includes(id)){return $("setupError").textContent="Use the Admin ID assigned to you."}if(password.length<10)return $("setupError").textContent="Password must be at least 10 characters.";if(password!==$("setupConfirm").value)return $("setupError").textContent="Passwords do not match.";try{busy(b,true,"Activating...");await api("setup",{admin_id:id,setup_code:$("setupCode").value.trim(),password},false);alert("Admin activated successfully.");$("loginId").value=id;e.currentTarget.reset();showLogin()}catch(err){$("setupError").textContent=err.message}finally{busy(b,false)}});
+$("loginForm").addEventListener("submit",async e=>{e.preventDefault();const b=e.currentTarget.querySelector("button[type=submit]");$("loginError").textContent="";try{busy(b,true,"Signing in...");const d=await api("login",{admin_id:$("loginId").value.trim().toUpperCase(),password:$("loginPassword").value},false);sessionStorage.setItem(TOKEN_KEY,d.token);sessionStorage.setItem(ADMIN_KEY,d.admin_id);$("loginPassword").value="";await enterDashboard()}catch(err){$("loginError").textContent=err.message}finally{busy(b,false)}});
+async function enterDashboard(){try{const d=await api("dashboard");$("authPage").classList.add("hidden");$("dashboard").classList.remove("hidden");$("adminIdentity").textContent=d.admin_id;renderOverview(d)}catch{signOut(false)}}
+async function signOut(callApi=true){if(callApi)try{await api("logout")}catch{}sessionStorage.removeItem(TOKEN_KEY);sessionStorage.removeItem(ADMIN_KEY);$("dashboard").classList.add("hidden");$("authPage").classList.remove("hidden");showLogin()}
+$("logoutBtn").addEventListener("click",()=>signOut(true));
+const titles={overview:"Dashboard Overview",candidates:"Candidate Database",applications:"Application Pipeline",clients:"Client Management",requirements:"Employer Requirements",jobs:"Job Openings"};
+document.querySelectorAll(".nav-item").forEach(btn=>btn.addEventListener("click",async()=>{document.querySelectorAll(".nav-item").forEach(x=>x.classList.remove("active"));btn.classList.add("active");const v=btn.dataset.view;document.querySelectorAll(".view").forEach(x=>x.classList.add("hidden"));$(`view-${v}`).classList.remove("hidden");$("pageTitle").textContent=titles[v];if(v==="overview")await refreshOverview();if(v==="candidates")await loadCandidates();if(v==="applications")await loadApplications();if(v==="clients")await loadClients();if(v==="requirements")await loadRequirements();if(v==="jobs")await loadJobs()}));
+function renderOverview(d){$("candidateCount").textContent=d.counts.candidates;$("applicationCount").textContent=d.counts.applications;$("clientCount").textContent=d.counts.clients;$("requirementCount").textContent=d.counts.requirements;$("jobCount").textContent=d.counts.active_jobs;$("activityList").innerHTML=(d.activity||[]).length?(d.activity||[]).map(a=>`<div class="activity-item"><strong>${esc((a.action||"").replaceAll("_"," "))}</strong><small>${esc(a.admin_id||"")} · ${when(a.created_at)}${a.details?" · "+esc(a.details):""}</small></div>`).join(""):`<div class="empty">No activity yet.</div>`}
+async function refreshOverview(){renderOverview(await api("dashboard"))}
+$("refreshOverview").addEventListener("click",refreshOverview);
 
-const $ = id => document.getElementById(id);
-const state = { candidates: [], requirements: [], jobs: [] };
+async function loadCandidates(){const body=$("candidateRows");body.innerHTML=`<tr><td colspan="7" class="empty">Loading candidates...</td></tr>`;try{state.candidates=(await api("candidates.list")).data||[];renderCandidates();refreshAssignSelectors()}catch(err){body.innerHTML=`<tr><td colspan="7" class="empty">${esc(err.message)}</td></tr>`}}
+function renderCandidates(){const q=$("candidateSearch").value.trim().toLowerCase();const rows=state.candidates.filter(c=>[c.full_name,c.phone,c.preferred_job,c.location,c.qualification,c.status].some(v=>String(v||"").toLowerCase().includes(q)));$("candidateRows").innerHTML=rows.length?rows.map(c=>`<tr><td><strong>${esc(c.full_name)}</strong><small>${esc(c.phone)}${c.email?" · "+esc(c.email):""}</small><small>${when(c.created_at)}</small></td><td><strong>${esc(c.preferred_job||"Not specified")}</strong><small>${esc(c.location||"—")} · ${esc(c.qualification||"Qualification not stated")}</small></td><td>${esc(c.experience||"—")}<small>${esc(c.skills||"")}</small></td><td>${c.resume_path?`<button class="resume-btn" data-resume="${c.id}">Open CV</button>`:`<span class="resume-missing">No CV</span>`}</td><td><select class="status-select" id="c-status-${c.id}">${opts(candidateStatuses,c.status)}</select></td><td><textarea class="note-input" id="c-notes-${c.id}" placeholder="Private notes">${esc(c.notes||"")}</textarea></td><td><button class="save-btn" data-save-candidate="${c.id}">Save</button></td></tr>`).join(""):`<tr><td colspan="7" class="empty">No matching candidates.</td></tr>`;document.querySelectorAll("[data-save-candidate]").forEach(b=>b.addEventListener("click",()=>saveCandidate(+b.dataset.saveCandidate,b)));document.querySelectorAll("[data-resume]").forEach(b=>b.addEventListener("click",()=>openResume(+b.dataset.resume,b)))}
+async function saveCandidate(id,b){try{busy(b,true,"Saving...");await api("candidates.update",{id,status:$(`c-status-${id}`).value,notes:$(`c-notes-${id}`).value});b.dataset.original="Saved ✓"}catch(err){alert(err.message)}finally{busy(b,false);setTimeout(()=>b.textContent="Save",800)}}
+async function openResume(id,b){try{busy(b,true,"Opening...");const d=await api("candidates.resume_url",{id});window.open(d.url,"_blank","noopener")}catch(err){alert(err.message)}finally{busy(b,false)}}
+$("candidateSearch").addEventListener("input",renderCandidates);$("refreshCandidates").addEventListener("click",loadCandidates);
 
-function escapeHtml(v) {
-  return String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
-}
+async function loadRequirements(){const body=$("requirementRows");body.innerHTML=`<tr><td colspan="6" class="empty">Loading requirements...</td></tr>`;try{state.requirements=(await api("requirements.list")).data||[];renderRequirements()}catch(err){body.innerHTML=`<tr><td colspan="6" class="empty">${esc(err.message)}</td></tr>`}}
+function renderRequirements(){const q=$("requirementSearch").value.trim().toLowerCase();const rows=state.requirements.filter(r=>[r.company_name,r.contact_name,r.phone,r.role_title,r.work_location,r.industry,r.status].some(v=>String(v||"").toLowerCase().includes(q)));$("requirementRows").innerHTML=rows.length?rows.map(r=>`<tr><td><strong>${esc(r.company_name)}</strong><small>${esc(r.contact_name)} · ${esc(r.phone)}</small><small>${when(r.created_at)}</small></td><td><strong>${esc(r.role_title||"Not specified")}</strong><small>${esc(r.manpower_count||"—")} people · ${esc(r.work_location||"—")}</small><small>${esc([r.industry,r.employment_type].filter(Boolean).join(" · "))}</small></td><td>${esc(r.salary_budget||"Budget not stated")}<small>Required: ${esc(r.required_by||"Not stated")}</small><small>${esc(r.details||"")}</small></td><td><select class="status-select" id="r-status-${r.id}">${opts(requirementStatuses,r.status)}</select></td><td><textarea class="note-input" id="r-notes-${r.id}">${esc(r.notes||"")}</textarea></td><td><button class="save-btn" data-save-requirement="${r.id}">Save</button></td></tr>`).join(""):`<tr><td colspan="6" class="empty">No matching requirements.</td></tr>`;document.querySelectorAll("[data-save-requirement]").forEach(b=>b.addEventListener("click",()=>saveRequirement(+b.dataset.saveRequirement,b)))}
+async function saveRequirement(id,b){try{busy(b,true,"Saving...");await api("requirements.update",{id,status:$(`r-status-${id}`).value,notes:$(`r-notes-${id}`).value})}catch(err){alert(err.message)}finally{busy(b,false)}}
+$("requirementSearch").addEventListener("input",renderRequirements);$("refreshRequirements").addEventListener("click",loadRequirements);
 
-async function api(action, payload = {}, auth = true) {
-  const headers = { "Content-Type": "application/json" };
-  if (auth) {
-    const token = sessionStorage.getItem(TOKEN_KEY);
-    if (token) headers.Authorization = `Bearer ${token}`;
-  }
-  const res = await fetch(API, { method: "POST", headers, body: JSON.stringify({ action, ...payload }) });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    if (res.status === 401 && auth) signOut(false);
-    throw new Error(data.error || "Request failed");
-  }
-  return data;
-}
+async function loadJobs(){try{state.jobs=(await api("jobs.list")).data||[];renderJobs();refreshAssignSelectors()}catch(err){$("jobRows").innerHTML=`<div class="empty">${esc(err.message)}</div>`}}
+function renderJobs(){$("jobRows").innerHTML=state.jobs.length?state.jobs.map(j=>`<article class="job-card"><div><h3>${esc(j.title)}</h3><p>${esc([j.category,j.location,j.employment_type,j.salary].filter(Boolean).join(" · "))}</p><small>${j.openings?esc(j.openings)+" opening(s) · ":""}${esc(j.description||"")}</small></div><div class="job-actions"><button class="toggle-btn ${j.is_active?"active":""}" data-toggle-job="${j.id}" data-next="${!j.is_active}">${j.is_active?"Active":"Inactive"}</button><button class="danger-btn" data-delete-job="${j.id}">Delete</button></div></article>`).join(""):`<div class="empty">No jobs published yet.</div>`;document.querySelectorAll("[data-toggle-job]").forEach(b=>b.addEventListener("click",async()=>{try{await api("jobs.update",{id:+b.dataset.toggleJob,is_active:b.dataset.next==="true"});await loadJobs();await refreshOverview()}catch(err){alert(err.message)}}));document.querySelectorAll("[data-delete-job]").forEach(b=>b.addEventListener("click",async()=>{if(!confirm("Delete this job? Existing candidate assignments to it will also be removed."))return;try{await api("jobs.delete",{id:+b.dataset.deleteJob});await loadJobs();await refreshOverview()}catch(err){alert(err.message)}}))}
+$("jobForm").addEventListener("submit",async e=>{e.preventDefault();const b=e.currentTarget.querySelector("button[type=submit]");try{busy(b,true,"Publishing...");await api("jobs.create",{title:$("jobTitle").value.trim(),category:$("jobCategory").value.trim()||null,openings:$("jobOpenings").value?+$("jobOpenings").value:null,location:$("jobLocation").value.trim()||null,employment_type:$("jobType").value.trim()||null,salary:$("jobSalary").value.trim()||null,description:$("jobDescription").value.trim()||null,is_active:true});e.currentTarget.reset();await loadJobs();await refreshOverview()}catch(err){$("jobError").textContent=err.message}finally{busy(b,false)}});$("refreshJobs").addEventListener("click",loadJobs);
 
-function setBusy(btn, busy, text = "Please wait...") {
-  if (!btn) return;
-  if (busy) { btn.dataset.original = btn.textContent; btn.textContent = text; btn.disabled = true; }
-  else { btn.textContent = btn.dataset.original || btn.textContent; btn.disabled = false; }
-}
+async function loadApplications(){try{if(!state.candidates.length)state.candidates=(await api("candidates.list")).data||[];if(!state.jobs.length)state.jobs=(await api("jobs.list")).data||[];state.applications=(await api("applications.list")).data||[];refreshAssignSelectors();renderApplications()}catch(err){$("applicationRows").innerHTML=`<tr><td colspan="6" class="empty">${esc(err.message)}</td></tr>`}}
+function refreshAssignSelectors(){if(!$("assignCandidate"))return;$("assignCandidate").innerHTML=`<option value="">Select candidate</option>`+state.candidates.map(c=>`<option value="${c.id}">${esc(c.full_name)} · ${esc(c.phone)}</option>`).join("");$("assignJob").innerHTML=`<option value="">Select job</option>`+state.jobs.filter(j=>j.is_active).map(j=>`<option value="${j.id}">${esc(j.title)} · ${esc(j.location||"")}</option>`).join("")}
+function renderApplications(){const q=$("applicationSearch").value.trim().toLowerCase();const rows=state.applications.filter(a=>[a.workforce_candidates?.full_name,a.workforce_candidates?.phone,a.workforce_jobs?.title,a.stage].some(v=>String(v||"").toLowerCase().includes(q)));$("applicationRows").innerHTML=rows.length?rows.map(a=>`<tr><td><strong>${esc(a.workforce_candidates?.full_name||"Candidate")}</strong><small>${esc(a.workforce_candidates?.phone||"")} · ${esc(a.workforce_candidates?.location||"")}</small></td><td><strong>${esc(a.workforce_jobs?.title||"Job")}</strong><small>${esc(a.workforce_jobs?.location||"")}</small></td><td><select class="status-select" id="a-stage-${a.id}">${opts(applicationStages,a.stage)}</select></td><td><input type="datetime-local" id="a-date-${a.id}" value="${a.interview_date?new Date(a.interview_date).toISOString().slice(0,16):""}"></td><td><textarea class="note-input" id="a-notes-${a.id}">${esc(a.notes||"")}</textarea></td><td><button class="save-btn" data-save-app="${a.id}">Save</button> <button class="danger-btn" data-delete-app="${a.id}">Remove</button></td></tr>`).join(""):`<tr><td colspan="6" class="empty">No applications yet.</td></tr>`;document.querySelectorAll("[data-save-app]").forEach(b=>b.addEventListener("click",()=>saveApplication(+b.dataset.saveApp,b)));document.querySelectorAll("[data-delete-app]").forEach(b=>b.addEventListener("click",()=>removeApplication(+b.dataset.deleteApp)))}
+$("assignForm").addEventListener("submit",async e=>{e.preventDefault();const b=e.currentTarget.querySelector("button[type=submit]");try{busy(b,true,"Assigning...");await api("applications.create",{candidate_id:+$("assignCandidate").value,job_id:+$("assignJob").value});e.currentTarget.reset();await loadApplications();await refreshOverview()}catch(err){alert(err.message)}finally{busy(b,false)}});
+async function saveApplication(id,b){try{busy(b,true,"Saving...");const raw=$(`a-date-${id}`).value;await api("applications.update",{id,stage:$(`a-stage-${id}`).value,notes:$(`a-notes-${id}`).value,interview_date:raw?new Date(raw).toISOString():null});await loadApplications()}catch(err){alert(err.message)}finally{busy(b,false)}}
+async function removeApplication(id){if(!confirm("Remove this candidate-to-job assignment?"))return;try{await api("applications.delete",{id});await loadApplications();await refreshOverview()}catch(err){alert(err.message)}}
+$("applicationSearch").addEventListener("input",renderApplications);$("refreshApplications").addEventListener("click",loadApplications);
 
-function showSetup() { $("loginCard").classList.add("hidden"); $("setupCard").classList.remove("hidden"); $("setupError").textContent = ""; }
-function showLogin() { $("setupCard").classList.add("hidden"); $("loginCard").classList.remove("hidden"); $("loginError").textContent = ""; }
-$("showSetup").addEventListener("click", showSetup);
-$("showLogin").addEventListener("click", showLogin);
+async function loadClients(){try{state.clients=(await api("clients.list")).data||[];renderClients()}catch(err){$("clientRows").innerHTML=`<div class="empty">${esc(err.message)}</div>`}}
+function renderClients(){const q=$("clientSearch").value.trim().toLowerCase();const rows=state.clients.filter(c=>[c.company_name,c.contact_name,c.phone,c.email,c.location,c.industry,c.status].some(v=>String(v||"").toLowerCase().includes(q)));$("clientRows").innerHTML=rows.length?rows.map(c=>`<article class="client-card"><div><h3>${esc(c.company_name)}</h3><p>${esc(c.contact_name||"No contact person")} ${c.phone?" · "+esc(c.phone):""}</p><div class="client-meta"><span>${esc(c.industry||"Industry not set")}</span><span>${esc(c.location||"Location not set")}</span><span>${esc(c.status)}</span></div>${c.notes?`<small>${esc(c.notes)}</small>`:""}</div><div class="client-actions"><select data-client-status="${c.id}">${opts(clientStatuses,c.status)}</select><button class="save-btn" data-save-client="${c.id}">Save</button></div></article>`).join(""):`<div class="empty">No clients yet.</div>`;document.querySelectorAll("[data-save-client]").forEach(b=>b.addEventListener("click",async()=>{try{await api("clients.update",{id:+b.dataset.saveClient,status:document.querySelector(`[data-client-status='${b.dataset.saveClient}']`).value});await loadClients()}catch(err){alert(err.message)}}))}
+$("clientForm").addEventListener("submit",async e=>{e.preventDefault();const b=e.currentTarget.querySelector("button[type=submit]");try{busy(b,true,"Adding...");await api("clients.create",{company_name:$("clientCompany").value.trim(),contact_name:$("clientContact").value.trim()||null,phone:$("clientPhone").value.trim()||null,email:$("clientEmail").value.trim()||null,location:$("clientLocation").value.trim()||null,industry:$("clientIndustry").value.trim()||null,notes:$("clientNotes").value.trim()||null,status:"active"});e.currentTarget.reset();await loadClients();await refreshOverview()}catch(err){$("clientError").textContent=err.message}finally{busy(b,false)}});$("clientSearch").addEventListener("input",renderClients);$("refreshClients").addEventListener("click",loadClients);
 
-$("setupForm").addEventListener("submit", async e => {
-  e.preventDefault();
-  const btn = e.currentTarget.querySelector("button[type=submit]");
-  const id = $("setupId").value.trim().toUpperCase();
-  const code = $("setupCode").value.trim();
-  const password = $("setupPassword").value;
-  const confirm = $("setupConfirm").value;
-  $("setupError").textContent = "";
-  if (!["ASLAM","ADMIN"].includes(id)) { $("setupError").textContent = "Use the Admin ID assigned to you."; return; }
-  if (password.length < 10) { $("setupError").textContent = "Password must be at least 10 characters."; return; }
-  if (password !== confirm) { $("setupError").textContent = "Passwords do not match."; return; }
-  try {
-    setBusy(btn, true, "Activating...");
-    await api("setup", { admin_id: id, setup_code: code, password }, false);
-    alert("Admin activated successfully. You can now sign in.");
-    $("loginId").value = id;
-    $("setupForm").reset();
-    showLogin();
-  } catch (err) { $("setupError").textContent = err.message; }
-  finally { setBusy(btn, false); }
-});
-
-$("loginForm").addEventListener("submit", async e => {
-  e.preventDefault();
-  const btn = e.currentTarget.querySelector("button[type=submit]");
-  $("loginError").textContent = "";
-  try {
-    setBusy(btn, true, "Signing in...");
-    const data = await api("login", { admin_id: $("loginId").value.trim().toUpperCase(), password: $("loginPassword").value }, false);
-    sessionStorage.setItem(TOKEN_KEY, data.token);
-    sessionStorage.setItem(ADMIN_KEY, data.admin_id);
-    $("loginPassword").value = "";
-    await enterDashboard();
-  } catch (err) { $("loginError").textContent = err.message; }
-  finally { setBusy(btn, false); }
-});
-
-async function enterDashboard() {
-  try {
-    const data = await api("dashboard");
-    $("authPage").classList.add("hidden");
-    $("dashboard").classList.remove("hidden");
-    $("adminIdentity").textContent = data.admin_id;
-    $("candidateCount").textContent = data.counts.candidates;
-    $("requirementCount").textContent = data.counts.requirements;
-    $("jobCount").textContent = data.counts.active_jobs;
-  } catch { signOut(false); }
-}
-
-async function signOut(callApi = true) {
-  if (callApi) { try { await api("logout"); } catch {} }
-  sessionStorage.removeItem(TOKEN_KEY);
-  sessionStorage.removeItem(ADMIN_KEY);
-  $("dashboard").classList.add("hidden");
-  $("authPage").classList.remove("hidden");
-  showLogin();
-}
-$("logoutBtn").addEventListener("click", () => signOut(true));
-
-const pageTitles = { overview: "Dashboard Overview", candidates: "Candidate Database", requirements: "Employer Requirements", jobs: "Job Openings" };
-document.querySelectorAll(".nav-item").forEach(btn => {
-  btn.addEventListener("click", async () => {
-    document.querySelectorAll(".nav-item").forEach(x => x.classList.remove("active"));
-    btn.classList.add("active");
-    const view = btn.dataset.view;
-    document.querySelectorAll(".view").forEach(x => x.classList.add("hidden"));
-    $(`view-${view}`).classList.remove("hidden");
-    $("pageTitle").textContent = pageTitles[view];
-    if (view === "candidates") await loadCandidates();
-    if (view === "requirements") await loadRequirements();
-    if (view === "jobs") await loadJobs();
-    if (view === "overview") await refreshCounts();
-  });
-});
-
-const candidateStatuses = ["new","screening","shortlisted","interview","selected","joined","rejected","hold"];
-const requirementStatuses = ["new","contacted","sourcing","shortlisted","fulfilled","closed","hold"];
-function statusOptions(list, current) { return list.map(x => `<option value="${x}" ${x === current ? "selected" : ""}>${x.replaceAll("_"," ")}</option>`).join(""); }
-
-async function loadCandidates() {
-  const tbody = $("candidateRows");
-  tbody.innerHTML = `<tr><td colspan="6" class="empty">Loading candidates...</td></tr>`;
-  try { const { data } = await api("candidates.list"); state.candidates = data || []; renderCandidates(); }
-  catch (err) { tbody.innerHTML = `<tr><td colspan="6" class="empty">${escapeHtml(err.message)}</td></tr>`; }
-}
-
-function renderCandidates() {
-  const q = $("candidateSearch").value.trim().toLowerCase();
-  const rows = state.candidates.filter(c => [c.full_name,c.phone,c.preferred_job,c.location,c.qualification].some(v => String(v||"").toLowerCase().includes(q)));
-  $("candidateRows").innerHTML = rows.length ? rows.map(c => `<tr><td><strong>${escapeHtml(c.full_name)}</strong><small>${escapeHtml(c.phone)}${c.email ? " • "+escapeHtml(c.email) : ""}</small><small>${new Date(c.created_at).toLocaleString()}</small></td><td><strong>${escapeHtml(c.preferred_job || "Not specified")}</strong><small>${escapeHtml(c.location || "—")}</small><small>${escapeHtml(c.qualification || "")}</small></td><td>${escapeHtml(c.experience || "—")}<small>${escapeHtml(c.skills || "")}</small></td><td><select class="status-select" id="c-status-${c.id}">${statusOptions(candidateStatuses,c.status)}</select></td><td><textarea class="note-input" id="c-notes-${c.id}" placeholder="Private notes">${escapeHtml(c.notes || "")}</textarea></td><td><button class="save-btn" data-save-candidate="${c.id}">Save</button></td></tr>`).join("") : `<tr><td colspan="6" class="empty">No matching candidates.</td></tr>`;
-  document.querySelectorAll("[data-save-candidate]").forEach(btn => btn.addEventListener("click", () => saveCandidate(Number(btn.dataset.saveCandidate), btn)));
-}
-
-async function saveCandidate(id, btn) {
-  try {
-    btn.disabled = true; btn.textContent = "Saving";
-    await api("candidates.update", { id, status: $(`c-status-${id}`).value, notes: $(`c-notes-${id}`).value });
-    btn.textContent = "Saved ✓";
-    setTimeout(() => { btn.disabled = false; btn.textContent = "Save"; }, 900);
-  } catch (err) { alert(err.message); btn.disabled = false; btn.textContent = "Save"; }
-}
-
-async function loadRequirements() {
-  const tbody = $("requirementRows");
-  tbody.innerHTML = `<tr><td colspan="6" class="empty">Loading requirements...</td></tr>`;
-  try { const { data } = await api("requirements.list"); state.requirements = data || []; renderRequirements(); }
-  catch (err) { tbody.innerHTML = `<tr><td colspan="6" class="empty">${escapeHtml(err.message)}</td></tr>`; }
-}
-
-function renderRequirements() {
-  const q = $("requirementSearch").value.trim().toLowerCase();
-  const rows = state.requirements.filter(r => [r.company_name,r.contact_name,r.phone,r.role_title,r.work_location,r.industry].some(v => String(v||"").toLowerCase().includes(q)));
-  $("requirementRows").innerHTML = rows.length ? rows.map(r => `<tr><td><strong>${escapeHtml(r.company_name)}</strong><small>${escapeHtml(r.contact_name)} • ${escapeHtml(r.phone)}</small><small>${new Date(r.created_at).toLocaleString()}</small></td><td><strong>${escapeHtml(r.role_title || "Not specified")}</strong><small>${escapeHtml(r.manpower_count || "—")} people • ${escapeHtml(r.work_location || "—")}</small><small>${escapeHtml(r.industry || "")} ${r.employment_type ? "• "+escapeHtml(r.employment_type) : ""}</small></td><td>${escapeHtml(r.salary_budget || "Budget not stated")}<small>Required: ${escapeHtml(r.required_by || "Not stated")}</small><small>${escapeHtml(r.details || "")}</small></td><td><select class="status-select" id="r-status-${r.id}">${statusOptions(requirementStatuses,r.status)}</select></td><td><textarea class="note-input" id="r-notes-${r.id}" placeholder="Private notes">${escapeHtml(r.notes || "")}</textarea></td><td><button class="save-btn" data-save-requirement="${r.id}">Save</button></td></tr>`).join("") : `<tr><td colspan="6" class="empty">No matching requirements.</td></tr>`;
-  document.querySelectorAll("[data-save-requirement]").forEach(btn => btn.addEventListener("click", () => saveRequirement(Number(btn.dataset.saveRequirement), btn)));
-}
-
-async function saveRequirement(id, btn) {
-  try {
-    btn.disabled = true; btn.textContent = "Saving";
-    await api("requirements.update", { id, status: $(`r-status-${id}`).value, notes: $(`r-notes-${id}`).value });
-    btn.textContent = "Saved ✓";
-    setTimeout(() => { btn.disabled = false; btn.textContent = "Save"; }, 900);
-  } catch (err) { alert(err.message); btn.disabled = false; btn.textContent = "Save"; }
-}
-
-async function loadJobs() {
-  $("jobRows").innerHTML = `<div class="empty">Loading jobs...</div>`;
-  try { const { data } = await api("jobs.list"); state.jobs = data || []; renderJobs(); }
-  catch (err) { $("jobRows").innerHTML = `<div class="empty">${escapeHtml(err.message)}</div>`; }
-}
-
-function renderJobs() {
-  $("jobRows").innerHTML = state.jobs.length ? state.jobs.map(j => `<article class="job-card"><div><h3>${escapeHtml(j.title)}</h3><p>${escapeHtml([j.category,j.location,j.employment_type,j.salary].filter(Boolean).join(" • "))}</p><small>${j.openings ? escapeHtml(j.openings)+" opening(s) • " : ""}${escapeHtml(j.description || "")}</small></div><div class="job-actions"><button class="toggle-btn ${j.is_active ? "active" : ""}" data-toggle-job="${j.id}" data-next="${!j.is_active}">${j.is_active ? "Active" : "Inactive"}</button></div></article>`).join("") : `<div class="empty">No jobs published yet.</div>`;
-  document.querySelectorAll("[data-toggle-job]").forEach(btn => btn.addEventListener("click", async () => { try { await api("jobs.update", { id: Number(btn.dataset.toggleJob), is_active: btn.dataset.next === "true" }); await loadJobs(); await refreshCounts(); } catch (err) { alert(err.message); } }));
-}
-
-$("jobForm").addEventListener("submit", async e => {
-  e.preventDefault();
-  const btn = e.currentTarget.querySelector("button[type=submit]");
-  $("jobError").textContent = "";
-  try {
-    setBusy(btn, true, "Publishing...");
-    await api("jobs.create", { title: $("jobTitle").value.trim(), category: $("jobCategory").value.trim() || null, openings: $("jobOpenings").value ? Number($("jobOpenings").value) : null, location: $("jobLocation").value.trim() || null, employment_type: $("jobType").value.trim() || null, salary: $("jobSalary").value.trim() || null, description: $("jobDescription").value.trim() || null, is_active: true });
-    e.currentTarget.reset(); await loadJobs(); await refreshCounts();
-  } catch (err) { $("jobError").textContent = err.message; }
-  finally { setBusy(btn, false); }
-});
-
-async function refreshCounts() {
-  const data = await api("dashboard");
-  $("candidateCount").textContent = data.counts.candidates;
-  $("requirementCount").textContent = data.counts.requirements;
-  $("jobCount").textContent = data.counts.active_jobs;
-}
-
-$("candidateSearch").addEventListener("input", renderCandidates);
-$("requirementSearch").addEventListener("input", renderRequirements);
-$("refreshCandidates").addEventListener("click", loadCandidates);
-$("refreshRequirements").addEventListener("click", loadRequirements);
-$("refreshJobs").addEventListener("click", loadJobs);
-
-if (sessionStorage.getItem(TOKEN_KEY)) enterDashboard();
+function csv(name,rows,columns){if(!rows.length)return alert("No data to export.");const quote=v=>`"${String(v??"").replaceAll('"','""')}"`;const text=[columns.map(c=>quote(c.label)).join(","),...rows.map(r=>columns.map(c=>quote(typeof c.value==="function"?c.value(r):r[c.value])).join(","))].join("\n");const blob=new Blob(["\ufeff"+text],{type:"text/csv;charset=utf-8"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`${name}-${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(url)}
+$("exportCandidates").addEventListener("click",()=>csv("workforce-candidates",state.candidates,[{label:"Name",value:"full_name"},{label:"Phone",value:"phone"},{label:"Location",value:"location"},{label:"Qualification",value:"qualification"},{label:"Preferred Job",value:"preferred_job"},{label:"Experience",value:"experience"},{label:"Skills",value:"skills"},{label:"Status",value:"status"},{label:"Notes",value:"notes"}]));
+$("exportRequirements").addEventListener("click",()=>csv("employer-requirements",state.requirements,[{label:"Company",value:"company_name"},{label:"Contact",value:"contact_name"},{label:"Phone",value:"phone"},{label:"Role",value:"role_title"},{label:"Headcount",value:"manpower_count"},{label:"Location",value:"work_location"},{label:"Industry",value:"industry"},{label:"Status",value:"status"}]));
+$("exportClients").addEventListener("click",()=>csv("clients",state.clients,[{label:"Company",value:"company_name"},{label:"Contact",value:"contact_name"},{label:"Phone",value:"phone"},{label:"Email",value:"email"},{label:"Location",value:"location"},{label:"Industry",value:"industry"},{label:"Status",value:"status"}]));
+$("exportApplications").addEventListener("click",()=>csv("applications",state.applications,[{label:"Candidate",value:r=>r.workforce_candidates?.full_name},{label:"Phone",value:r=>r.workforce_candidates?.phone},{label:"Job",value:r=>r.workforce_jobs?.title},{label:"Stage",value:"stage"},{label:"Interview",value:"interview_date"},{label:"Notes",value:"notes"}]));
+if(sessionStorage.getItem(TOKEN_KEY))enterDashboard();
