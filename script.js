@@ -1,7 +1,7 @@
 const WHATSAPP_NUMBER = "918609955837";
 const SUPABASE_URL = "https://yvuljyujtrycwoxhnzyi.supabase.co";
 const SUPABASE_KEY = "sb_publishable_jCR-jZAEWg3d1rNRcOiV3A_23F-knpG";
-const RESUME_UPLOAD_URL = `${SUPABASE_URL}/functions/v1/workforce-resume-upload`;
+const CANDIDATE_REGISTER_URL = `${SUPABASE_URL}/functions/v1/workforce-resume-upload`;
 
 const menuToggle = document.getElementById("menuToggle");
 const navMenu = document.getElementById("navMenu");
@@ -14,14 +14,20 @@ document.querySelectorAll("#navMenu a").forEach(link => link.addEventListener("c
 const yearEl = document.getElementById("year"); if (yearEl) yearEl.textContent = new Date().getFullYear();
 function openWhatsApp(message) { window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, "_blank", "noopener"); }
 
-async function insertRow(table, row, returnRow = false) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, { method: "POST", headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json", "Prefer": returnRow ? "return=representation" : "return=minimal" }, body: JSON.stringify(row) });
+async function insertRow(table, row) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, { method: "POST", headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json", "Prefer": "return=minimal" }, body: JSON.stringify(row) });
   if (!res.ok) throw new Error((await res.text()) || "Database request failed");
-  if (returnRow) { const data = await res.json(); return data?.[0] || null; }
-  return null;
 }
 async function fetchActiveJobs() { const res = await fetch(`${SUPABASE_URL}/rest/v1/workforce_jobs?is_active=eq.true&select=*&order=created_at.desc`, { headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` } }); if (!res.ok) throw new Error("Could not load jobs"); return res.json(); }
-async function uploadResume(candidateId, phone, file) { const form = new FormData(); form.append("candidate_id", String(candidateId)); form.append("phone", phone); form.append("resume", file); const res = await fetch(RESUME_UPLOAD_URL, { method: "POST", body: form }); const data = await res.json().catch(() => ({})); if (!res.ok) throw new Error(data.error || "Resume upload failed"); return data; }
+async function registerCandidate(row, file) {
+  const form = new FormData();
+  Object.entries(row).forEach(([k,v]) => { if (v !== null && v !== undefined) form.append(k, String(v)); });
+  if (file) form.append("resume", file);
+  const res = await fetch(CANDIDATE_REGISTER_URL, { method: "POST", body: form });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Candidate registration failed");
+  return data;
+}
 
 document.getElementById("whatsappFloat")?.addEventListener("click", event => { event.preventDefault(); openWhatsApp("Hello Workforce Solutions, I would like to know more about your manpower and recruitment services."); });
 
@@ -43,16 +49,15 @@ if (candidateForm) {
 }
 
 candidateForm?.addEventListener("submit", async event => {
-  event.preventDefault(); const button = event.currentTarget.querySelector('button[type="submit"]'); const original = button?.textContent; if (button) { button.disabled = true; button.textContent = "Saving profile..."; }
+  event.preventDefault(); const button = event.currentTarget.querySelector('button[type="submit"]'); const original = button?.textContent; if (button) { button.disabled = true; button.textContent = "Registering profile..."; }
   const row = { full_name: document.getElementById("cName").value.trim(), phone: document.getElementById("cPhone").value.trim(), location: document.getElementById("cLocation").value.trim(), qualification: document.getElementById("cQualification").value.trim() || null, preferred_job: document.getElementById("cJob").value, experience: document.getElementById("cExperience").value.trim() || null, skills: document.getElementById("cSkills").value.trim() || null };
   const file = document.getElementById("cResume")?.files?.[0] || null;
   if (file && file.size > 5 * 1024 * 1024) { if (button) { button.disabled = false; button.textContent = original; } alert("Please choose a resume file smaller than 5 MB."); return; }
-  let saved = true, resumeSaved = !file;
-  try { const candidate = await insertRow("workforce_candidates", row, true); if (!candidate?.id) throw new Error("Candidate ID was not returned"); if (file) { if (button) button.textContent = "Uploading CV..."; await uploadResume(candidate.id, row.phone, file); resumeSaved = true; } } catch (err) { console.error(err); saved = false; }
-  const message = `Hello Workforce Solutions,\n\nI would like to register for job opportunities.\n\nCANDIDATE PROFILE\nName: ${row.full_name}\nPhone: ${row.phone}\nCurrent Location: ${row.location}\nQualification: ${row.qualification || "Not specified"}\nPreferred Job: ${row.preferred_job}\nExperience: ${row.experience || "Not specified"}\nSkills / Previous Work: ${row.skills || "Not specified"}\nResume: ${file ? (resumeSaved ? "Uploaded securely" : "Upload could not be completed") : "Not attached"}\n\nI understand that registration does not guarantee placement.`;
+  let saved = false, resumeSaved = false;
+  try { if (file && button) button.textContent = "Uploading CV securely..."; const result = await registerCandidate(row, file); saved = true; resumeSaved = Boolean(result.resume_uploaded); } catch (err) { console.error(err); alert(err.message || "Registration could not be saved."); }
+  const message = `Hello Workforce Solutions,\n\nI would like to register for job opportunities.\n\nCANDIDATE PROFILE\nName: ${row.full_name}\nPhone: ${row.phone}\nCurrent Location: ${row.location}\nQualification: ${row.qualification || "Not specified"}\nPreferred Job: ${row.preferred_job}\nExperience: ${row.experience || "Not specified"}\nSkills / Previous Work: ${row.skills || "Not specified"}\nResume: ${file ? (resumeSaved ? "Uploaded securely" : "Not uploaded") : "Not attached"}\n\nI understand that registration does not guarantee placement.`;
   if (button) { button.disabled = false; button.textContent = original; }
-  if (!saved) alert("Your WhatsApp registration will still open, but some database information or the CV could not be saved.");
-  openWhatsApp(message);
+  if (saved) openWhatsApp(message);
 });
 
 function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[ch])); }
