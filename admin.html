@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex,nofollow">
-  <title>Workforce Solutions | Admin Dashboard</title>
+  <title>Workforce Solutions | Recruitment Management</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
@@ -14,61 +14,58 @@
   <div class="auth-page" id="authPage">
     <div class="auth-brand">
       <a href="index.html" class="brand"><span class="brand-mark">W</span><span><strong>Workforce Solutions</strong><small>Secure Admin Portal</small></span></a>
-      <div class="auth-message">
-        <span class="eyebrow">PRIVATE ACCESS</span>
-        <h1>Manage your workforce pipeline.</h1>
-        <p>Review candidates, employer requirements, job openings, status updates and internal notes from one protected dashboard.</p>
-        <div class="auth-features"><span>✓ Candidate database</span><span>✓ Employer requirements</span><span>✓ Vacancy management</span><span>✓ Internal status tracking</span></div>
-      </div>
+      <div class="auth-message"><span class="eyebrow">PRIVATE ACCESS</span><h1>Manage your recruitment pipeline.</h1><p>Candidate profiles, resumes, applications, clients, employer requirements and vacancies in one protected workspace.</p><div class="auth-features"><span>✓ Candidate + CV database</span><span>✓ Candidate-to-job assignment</span><span>✓ Client management</span><span>✓ Recruitment pipeline</span></div></div>
     </div>
     <div class="auth-panel">
-      <div class="auth-card" id="loginCard">
-        <span class="mini-label">ADMIN LOGIN</span><h2>Welcome back</h2><p>Sign in using your Workforce Solutions Admin ID and private password.</p>
-        <form id="loginForm">
-          <label>Admin ID<input id="loginId" autocomplete="username" placeholder="ADMIN" required></label>
-          <label>Password<input id="loginPassword" type="password" autocomplete="current-password" placeholder="Your password" required></label>
-          <div class="form-error" id="loginError"></div><button class="primary-btn" type="submit">Sign In →</button>
-        </form>
-        <button class="text-btn" id="showSetup" type="button">First time here? Create your password</button><a class="back-link" href="index.html">← Back to website</a>
-      </div>
-      <div class="auth-card hidden" id="setupCard">
-        <span class="mini-label">FIRST-TIME ACTIVATION</span><h2>Create admin password</h2><p>Use your Admin ID and one-time setup code, then choose a strong private password.</p>
-        <form id="setupForm">
-          <label>Admin ID<input id="setupId" autocomplete="username" placeholder="ADMIN" required></label>
-          <label>One-time Setup Code<input id="setupCode" type="password" autocomplete="off" placeholder="Setup code" required></label>
-          <label>New Password<input id="setupPassword" type="password" autocomplete="new-password" minlength="10" placeholder="At least 10 characters" required></label>
-          <label>Confirm Password<input id="setupConfirm" type="password" autocomplete="new-password" minlength="10" placeholder="Repeat password" required></label>
-          <div class="form-error" id="setupError"></div><button class="primary-btn" type="submit">Activate Admin →</button>
-        </form>
-        <button class="text-btn" id="showLogin" type="button">Already activated? Sign in</button>
-      </div>
+      <div class="auth-card" id="loginCard"><span class="mini-label">ADMIN LOGIN</span><h2>Welcome back</h2><p>Sign in using your Workforce Solutions Admin ID and private password.</p><form id="loginForm"><label>Admin ID<input id="loginId" autocomplete="username" placeholder="ADMIN" required></label><label>Password<input id="loginPassword" type="password" autocomplete="current-password" placeholder="Your password" required></label><div class="form-error" id="loginError"></div><button class="primary-btn" type="submit">Sign In →</button></form><button class="text-btn" id="showSetup" type="button">First time here? Create your password</button><a class="back-link" href="index.html">← Back to website</a></div>
+      <div class="auth-card hidden" id="setupCard"><span class="mini-label">FIRST-TIME ACTIVATION</span><h2>Create admin password</h2><p>Use your Admin ID and one-time setup code, then choose a strong private password.</p><form id="setupForm"><label>Admin ID<input id="setupId" autocomplete="username" placeholder="ADMIN" required></label><label>One-time Setup Code<input id="setupCode" type="password" autocomplete="off" placeholder="Setup code" required></label><label>New Password<input id="setupPassword" type="password" autocomplete="new-password" minlength="10" placeholder="At least 10 characters" required></label><label>Confirm Password<input id="setupConfirm" type="password" autocomplete="new-password" minlength="10" placeholder="Repeat password" required></label><div class="form-error" id="setupError"></div><button class="primary-btn" type="submit">Activate Admin →</button></form><button class="text-btn" id="showLogin" type="button">Already activated? Sign in</button></div>
     </div>
   </div>
+
   <div class="dashboard hidden" id="dashboard">
     <aside class="sidebar">
-      <a href="index.html" class="brand brand-light"><span class="brand-mark">W</span><span><strong>Workforce Solutions</strong><small>Admin Dashboard</small></span></a>
-      <nav class="side-nav"><button class="nav-item active" data-view="overview">Overview</button><button class="nav-item" data-view="candidates">Candidates</button><button class="nav-item" data-view="requirements">Employer Requirements</button><button class="nav-item" data-view="jobs">Job Openings</button></nav>
+      <a href="index.html" class="brand brand-light"><span class="brand-mark">W</span><span><strong>Workforce Solutions</strong><small>Recruitment Management</small></span></a>
+      <nav class="side-nav">
+        <button class="nav-item active" data-view="overview">Overview</button>
+        <button class="nav-item" data-view="candidates">Candidates</button>
+        <button class="nav-item" data-view="applications">Applications</button>
+        <button class="nav-item" data-view="clients">Clients</button>
+        <button class="nav-item" data-view="requirements">Employer Requirements</button>
+        <button class="nav-item" data-view="jobs">Job Openings</button>
+      </nav>
       <div class="sidebar-bottom"><span>Signed in as</span><strong id="adminIdentity">—</strong><button id="logoutBtn">Sign Out</button></div>
     </aside>
+
     <main class="main">
-      <header class="topbar"><div><span class="mini-label">WORKFORCE SOLUTIONS</span><h1 id="pageTitle">Dashboard Overview</h1></div><a href="index.html" target="_blank" class="outline-btn">View Live Website ↗</a></header>
+      <header class="topbar"><div><span class="mini-label">WORKFORCE SOLUTIONS · PHASE 4</span><h1 id="pageTitle">Dashboard Overview</h1></div><a href="index.html" target="_blank" class="outline-btn">View Live Website ↗</a></header>
+
       <section class="view" id="view-overview">
-        <div class="stat-grid"><article><span>Candidates</span><strong id="candidateCount">0</strong><small>Total profiles</small></article><article><span>Employer Requirements</span><strong id="requirementCount">0</strong><small>Total enquiries</small></article><article><span>Active Jobs</span><strong id="jobCount">0</strong><small>Published openings</small></article></div>
-        <div class="welcome-card"><div><span class="mini-label">PHASE 3</span><h2>Your recruitment operations are now connected.</h2><p>Website submissions are stored in the database. Use the dashboard to review incoming records, update their status, maintain internal notes and publish active job openings.</p></div><div class="security-note"><strong>Security</strong><p>Your admin password is never stored in GitHub. Sessions expire automatically and the private database is accessed through the protected backend API.</p></div></div>
+        <div class="stat-grid five"><article><span>Candidates</span><strong id="candidateCount">0</strong><small>Total profiles</small></article><article><span>Applications</span><strong id="applicationCount">0</strong><small>Job assignments</small></article><article><span>Clients</span><strong id="clientCount">0</strong><small>Company records</small></article><article><span>Requirements</span><strong id="requirementCount">0</strong><small>Employer enquiries</small></article><article><span>Active Jobs</span><strong id="jobCount">0</strong><small>Published openings</small></article></div>
+        <div class="overview-grid"><div class="welcome-card"><div><span class="mini-label">RECRUITMENT OPERATIONS</span><h2>Your manpower agency now has a working recruitment system.</h2><p>Register candidates from the public website, securely store CVs, assign profiles to vacancies, track application stages and manage employer/client relationships.</p></div></div><div class="activity-card"><div class="card-head"><h2>Recent activity</h2><button class="link-btn" id="refreshOverview">Refresh</button></div><div id="activityList" class="activity-list"></div></div></div>
       </section>
+
       <section class="view hidden" id="view-candidates">
-        <div class="section-toolbar"><input class="search" id="candidateSearch" placeholder="Search candidate name, phone, job or location"><button class="outline-btn" id="refreshCandidates">Refresh</button></div>
-        <div class="table-shell"><table><thead><tr><th>Candidate</th><th>Job / Location</th><th>Experience</th><th>Status</th><th>Internal Notes</th><th>Action</th></tr></thead><tbody id="candidateRows"></tbody></table></div>
+        <div class="section-toolbar"><input class="search" id="candidateSearch" placeholder="Search name, phone, job, location or qualification"><div class="toolbar-actions"><button class="outline-btn" id="exportCandidates">Export CSV</button><button class="outline-btn" id="refreshCandidates">Refresh</button></div></div>
+        <div class="table-shell"><table><thead><tr><th>Candidate</th><th>Profile</th><th>Experience</th><th>Resume</th><th>Status</th><th>Internal Notes</th><th>Action</th></tr></thead><tbody id="candidateRows"></tbody></table></div>
       </section>
+
+      <section class="view hidden" id="view-applications">
+        <div class="assign-shell"><form id="assignForm" class="inline-form"><div><span class="mini-label">ASSIGN CANDIDATE</span><h2>Candidate → Job</h2></div><select id="assignCandidate" required><option value="">Select candidate</option></select><select id="assignJob" required><option value="">Select job</option></select><button class="primary-btn compact" type="submit">Assign</button></form></div>
+        <div class="section-toolbar"><input class="search" id="applicationSearch" placeholder="Search candidate, job or stage"><div class="toolbar-actions"><button class="outline-btn" id="exportApplications">Export CSV</button><button class="outline-btn" id="refreshApplications">Refresh</button></div></div>
+        <div class="table-shell"><table><thead><tr><th>Candidate</th><th>Job</th><th>Stage</th><th>Interview</th><th>Notes</th><th>Action</th></tr></thead><tbody id="applicationRows"></tbody></table></div>
+      </section>
+
+      <section class="view hidden" id="view-clients">
+        <div class="clients-layout"><form class="job-form" id="clientForm"><span class="mini-label">ADD CLIENT</span><h2>Company record</h2><label>Company Name<input id="clientCompany" required placeholder="Company name"></label><div class="two"><label>Contact Person<input id="clientContact" placeholder="Name"></label><label>Phone<input id="clientPhone" placeholder="Phone"></label></div><div class="two"><label>Email<input id="clientEmail" type="email" placeholder="Email"></label><label>Location<input id="clientLocation" placeholder="Location"></label></div><label>Industry<input id="clientIndustry" placeholder="Manufacturing / Logistics / Retail"></label><label>Notes<textarea id="clientNotes" rows="3" placeholder="Commercial terms, relationship notes, follow-up..."></textarea></label><button class="primary-btn" type="submit">Add Client →</button><div class="form-error" id="clientError"></div></form><div><div class="section-toolbar"><input class="search" id="clientSearch" placeholder="Search clients"><div class="toolbar-actions"><button class="outline-btn" id="exportClients">Export CSV</button><button class="outline-btn" id="refreshClients">Refresh</button></div></div><div class="client-list" id="clientRows"></div></div></div>
+      </section>
+
       <section class="view hidden" id="view-requirements">
-        <div class="section-toolbar"><input class="search" id="requirementSearch" placeholder="Search company, contact, role or location"><button class="outline-btn" id="refreshRequirements">Refresh</button></div>
+        <div class="section-toolbar"><input class="search" id="requirementSearch" placeholder="Search company, contact, role or location"><div class="toolbar-actions"><button class="outline-btn" id="exportRequirements">Export CSV</button><button class="outline-btn" id="refreshRequirements">Refresh</button></div></div>
         <div class="table-shell"><table><thead><tr><th>Employer</th><th>Requirement</th><th>Commercial</th><th>Status</th><th>Internal Notes</th><th>Action</th></tr></thead><tbody id="requirementRows"></tbody></table></div>
       </section>
+
       <section class="view hidden" id="view-jobs">
-        <div class="jobs-layout">
-          <form class="job-form" id="jobForm"><span class="mini-label">CREATE OPENING</span><h2>Publish a job</h2><label>Job Title<input id="jobTitle" required placeholder="e.g. Production Operator"></label><div class="two"><label>Category<input id="jobCategory" placeholder="Manufacturing"></label><label>Openings<input id="jobOpenings" type="number" min="1" placeholder="20"></label></div><div class="two"><label>Location<input id="jobLocation" placeholder="Kolkata / Multiple locations"></label><label>Employment Type<input id="jobType" placeholder="Full-time / Contract"></label></div><label>Salary<input id="jobSalary" placeholder="₹15,000–₹18,000 or As per role"></label><label>Description<textarea id="jobDescription" rows="4" placeholder="Brief role description"></textarea></label><button class="primary-btn" type="submit">Publish Job →</button><div class="form-error" id="jobError"></div></form>
-          <div><div class="section-toolbar"><h2>Published openings</h2><button class="outline-btn" id="refreshJobs">Refresh</button></div><div class="job-list" id="jobRows"></div></div>
-        </div>
+        <div class="jobs-layout"><form class="job-form" id="jobForm"><span class="mini-label">CREATE OPENING</span><h2>Publish a job</h2><label>Job Title<input id="jobTitle" required placeholder="e.g. Production Operator"></label><div class="two"><label>Category<input id="jobCategory" placeholder="Manufacturing"></label><label>Openings<input id="jobOpenings" type="number" min="1" placeholder="20"></label></div><div class="two"><label>Location<input id="jobLocation" placeholder="Kolkata / Multiple locations"></label><label>Employment Type<input id="jobType" placeholder="Full-time / Contract"></label></div><label>Salary<input id="jobSalary" placeholder="₹15,000–₹18,000 or As per role"></label><label>Description<textarea id="jobDescription" rows="4" placeholder="Brief role description"></textarea></label><button class="primary-btn" type="submit">Publish Job →</button><div class="form-error" id="jobError"></div></form><div><div class="section-toolbar"><h2>Published openings</h2><button class="outline-btn" id="refreshJobs">Refresh</button></div><div class="job-list" id="jobRows"></div></div></div>
       </section>
     </main>
   </div>
